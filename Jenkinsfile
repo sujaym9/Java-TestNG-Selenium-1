@@ -1,23 +1,78 @@
-node {
-    // Mark the code checkout 'stage'....
-    stage 'Checkout'
-    // Get some code from a GitHub repository
-    checkout scm
-    // Note: if this is copy and pasted into pipeline script, the following will work while the above handles branches and such
-    // git url: 'https://github.com/saucelabs-sample-test-frameworks/Java-TestNG-Selenium.git'
 
-    docker.image('maven:3.3.9-jdk-7').inside {
-        stage 'Compile'
-        sh "mvn compile"
-        stage 'Test'
-        sauce('saucelabs') {
-            sauceconnect(useGeneratedTunnelIdentifier: true, verboseLogging: true) {
-                sh "mvn test"
-            }
-        }
+def setupEnv() {
+    ["PATH+MAVEN=${tool 'maven3'}/bin",
+     "PATH+JAVA_HOME=${tool 'jdk1.8'}/bin"
+     ]
+}
+
+
+def notifySlack(String buildStatus = 'STARTED') {
+    
+	
+    buildStatus = buildStatus ?: 'SUCCESS'
+
+    def color
+
+    if (buildStatus == 'STARTED') {
+        color = '#D4DADF'
+    } else if (buildStatus == 'SUCCESS') {
+        color = '#BDFFC3'
+    } else if (buildStatus == 'UNSTABLE') {
+        color = '#FFFE89'
+    } else {
+        color = '#FF9FA1'
     }
 
-    stage 'Collect Results'
-    step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*.xml'])
-    step([$class: 'SauceOnDemandTestPublisher'])
+    def msg = "${buildStatus}: `${env.JOB_NAME}` #${env.BUILD_NUMBER}:\n More info at: ${env.BUILD_URL}"
+
+    slackSend(color: color, channel: '#qa_test', message: msg)
 }
+
+
+
+
+
+node {
+
+sauce('6acd7486-127e-4e13-ba9a-7cbe0764363a') {
+    
+	 try{
+        notifySlack()
+		
+        timestamps {
+                    
+					
+				stage('Compile & Testing') {
+				
+                withEnv(setupEnv()) {
+				
+                    checkout scm
+                                       
+
+                    try {
+					
+                        bat 'mvn test -DtestPlanId=${TESTPLAN_KEY}  -Dbrowser=${BROWSER}  -DbrowserVersion=${BROWSER_VERSION} -DosVersion=${OSVERSION}'
+      
+                    }
+                    catch (Exception e) {
+                        currentBuild.result = 'FAILURE'
+						
+						throw e
+                    }
+                }
+            }
+            
+            
+            
+        }
+    } finally {
+        notifySlack(currentBuild.result)
+       
+    }
+}
+
+   
+}
+ 
+ 
+
