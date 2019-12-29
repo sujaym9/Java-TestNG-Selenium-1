@@ -51,7 +51,7 @@ sauce('6acd7486-127e-4e13-ba9a-7cbe0764363a') {
 
                     try {
 					
-                        bat 'mvn test -DtestPlanId=${TESTPLAN_KEY}  -Dbrowser=${BROWSER}  -DbrowserVersion=${BROWSER_VERSION} -DosVersion=${OSVERSION}'
+                        bat 'mvn test'
       
                     }
                     catch (Exception e) {
